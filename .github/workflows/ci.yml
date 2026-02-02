@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          set -euxo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y build-essential make pkg-config libsodium-dev libssl-dev
+
+      - name: Toolchain info
+        run: |
+          set -euxo pipefail
+          g++ --version
+          make --version
+          pkg-config --modversion libsodium
+
+      - name: Build (sanity)
+        run: |
+          set -euxo pipefail
+          make sanity
+
+      - name: Build
+        run: |
+          set -euxo pipefail
+          make build
+
+      - name: Self-test
+        run: |
+          set -euxo pipefail
+          chmod +x ./CyberShield || true
+          ./CyberShield --self-test
+
+      - name: Smoke test
+        run: |
+          set -euxo pipefail
+          chmod +x ./CyberShield || true
+          echo "hello" > sample.txt
+          ./CyberShield sample.txt
+          test -s sample.txt.enc
+          ls -l sample.txt.enc
+          stat -c "%a %n" sample.txt.enc
