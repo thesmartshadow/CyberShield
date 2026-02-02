@@ -1,4 +1,5 @@
 CXX ?= g++
+CXX ?= g++-12
 CXXFLAGS ?= -std=c++20
 LDLIBS ?= -ldl -lsodium
 
