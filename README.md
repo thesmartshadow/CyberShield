@@ -62,6 +62,8 @@ make CXX=clang++
 
 ```
 
+
+
 Additional Makefile targets:
 
 ```bash
@@ -75,6 +77,7 @@ Manual compilation for shared objects and binary:
 
 ```bash
 CXX=g++
+CXX=g++-12
 $CXX -std=c++20 -fPIC -shared -o CyberShield.so cyber_shield.cpp -ldl -lsodium
 $CXX -std=c++20 -o CyberShield cyber_shield.cpp -lsodium -ldl
 
