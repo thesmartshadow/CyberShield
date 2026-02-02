@@ -1,152 +1,116 @@
+# CyberShield
+**Advanced Quantum-Resistant Encryption & System Integrity Framework**
 
-# CyberShield 🔒
-*Developed by Phanto Force Team*  
-**Advanced Quantum Encryption & System Protection Framework**
-
----
-
-### **المميزات الفريدة** ✨
-
-- **هوية كمومية ديناميكية**: دمج بصمة النظام + التوقيت الذري.
-- **التدمير الذاتي الآمن للمفاتيح** عند اكتشاف التلاعب.
-- **تشفير مزدوج الطبقات**: (ChaCha20-Poly1305 + AES-256).
-- **اعتراض استدعاءات النظام في الوقت الحقيقي**.
-- **حماية الذاكرة ضد هجمات القنوات الجانبية**.
+Developed by **Ali Firas - thesmartshadow** in collaboration with the **Phantom Force Team**.
 
 ---
 
-### **المتطلبات الأساسية**  
-1. تحديث النظام:
-   ```bash
-   sudo apt update
-   ```
+## Executive Summary
 
-2. تثبيت الحزم المطلوبة:
-   ```bash
-   sudo apt install -y g++-12 libsodium-dev libssl-dev git
-   ```
+CyberShield is a sophisticated security framework engineered to provide high-level system protection through dynamic quantum-inspired identity verification and multi-layered cryptographic protocols. By intercepting system calls and implementing memory-resident defense mechanisms, CyberShield mitigates unauthorized access and ensures data confidentiality in high-stakes environments.
 
----
 
-### **تنصيب المشروع**  
-1. **استنساخ المستودع**:
-   ```bash
-   git clone https://github.com/your-username/CyberShield.git
-   cd CyberShield
-   ```
 
-2. **بناء المشروع**:
-   - إذا كان هناك Makefile:
-     ```bash
-     make build
-     ```
-   - أو يدويًا:
-     ```bash
-     g++-12 -std=c++20 -fPIC -shared -o CyberShield.so cyber_shield.cpp -ldl -lsodium
-     g++-12 -std=c++20 -o CyberShield cyber_shield.cpp -lsodium -ldl
-     ```
+## Core Technical Innovations
+
+* **Dynamic Quantum Identity (DQI):** Fusion of hardware-bound telemetry (CPU ID, MAC Address) with atomic-drift timestamps for non-replicable session tokens.
+* **Ephemeral Key Volatility:** Automated self-destruction of cryptographic keys upon detection of unauthorized memory debugging or process tampering.
+* **Hybrid Encryption Architecture:** Dual-layer protection utilizing **ChaCha20-Poly1305** and **AES-256-GCM** for maximum throughput and security.
+* **Real-time Syscall Interception:** Deep-level monitoring of system calls to prevent unauthorized file system interactions.
+* **Side-Channel Mitigation:** Specialized memory hardening to defend against timing attacks and power analysis.
 
 ---
 
-### **طريقة الاستخدام**  
-1. **كحارس نظام**:
-   ```bash
-   sudo LD_PRELOAD=./CyberShield.so /usr/sbin/sshd
-   ```
+## Technical Prerequisites
 
-2. **تشفير ملف**:
-   ```bash
-   ./CyberShield /etc/passwd
-   ```
-   سيتم إنشاء `passwd.enc`.
+Ensure the following dependencies are installed on a POSIX-compliant system:
 
-3. **اختبار الحماية**:
-   ```bash
-   LD_PRELOAD=./CyberShield.so nano /etc/shadow
-   ```
-   سيتم منع الوصول.
-
-4. **اختبار التدمير الذاتي**:
-   ```bash
-   gdb -ex run --args ./CyberShield testfile
-   ```
+1.  **System Update:**
+    ```bash
+    sudo apt update
+    ```
+2.  **Toolchain & Libraries:**
+    ```bash
+    sudo apt install -y g++-12 libsodium-dev libssl-dev git
+    ```
 
 ---
 
-### **التثبيت**  
-1. **استنساخ المستودع**:
-   ```bash
-   git clone https://github.com/PhantoForce/CyberShield.git
-   cd CyberShield
-   ```
+## Deployment & Compilation
 
-2. **التثبيت التلقائي**:
-   ```bash
-   sudo ./install.sh
-   ```
+### 1. Repository Acquisition
+```bash
+git clone [https://github.com/thesmartshadow/CyberShield.git](https://github.com/thesmartshadow/CyberShield.git)
+cd CyberShield
 
----
+```
 
-### **أمثلة استخدام** 💻  
-1. **حماية خادم ويب**:
-   ```bash
-   sudo LD_PRELOAD=./CyberShield.so /usr/sbin/apache2
-   ```
+### 2. Build Sequence
 
-2. **تشفير قاعدة بيانات**:
-   ```bash
-   ./CyberShield /var/lib/mysql/credentials.db
-   ```
+For automated builds using the provided Makefile:
 
-3. **مراقبة الوصول**:
-   ```bash
-   tail -f /var/log/syslog | grep CyberShield
-   ```
+```bash
+make build
+
+```
+
+Manual compilation for shared objects and binary:
+
+```bash
+g++-12 -std=c++20 -fPIC -shared -o CyberShield.so cyber_shield.cpp -ldl -lsodium
+g++-12 -std=c++20 -o CyberShield cyber_shield.cpp -lsodium -ldl
+
+```
 
 ---
 
-### **الابتكارات الأساسية** 🛠️  
-- **نظام بصمة الأجهزة الذكية**: MAC + CPU ID + Timestamp.
-- **مفاتيح مؤقتة ذاتية الإبادة** بعد كل جلسة.
-- **مقاومة هجمات الـ Side-channel**.
-- **طبقة تشفير مخصصة لأنظمة Linux/Windows**.
+## Operational Implementation
+
+### System Sentinel Mode
+
+Inject the framework into critical processes to monitor and restrict unauthorized behavior:
+
+```bash
+sudo LD_PRELOAD=./CyberShield.so /usr/sbin/sshd
+
+```
+
+### Data Encapsulation (Encryption)
+
+Encrypt sensitive assets with the localized binary:
+
+```bash
+./CyberShield /etc/passwd
+
+```
+
+*Output: `passwd.enc*`
+
+### Integrity Testing
+
+Verify the access control layer by attempting to access restricted shadow files:
+
+```bash
+LD_PRELOAD=./CyberShield.so nano /etc/shadow
+
+```
+
+*Access will be programmatically denied by the interceptor.*
 
 ---
 
-### **مميزات التسويق الفريدة**  
-- **أول نظام أمني** يجمع بين:
-  - تشفير كمي ديناميكي.
-  - اعتراض استدعاءات النظام على مستوى النواة.
-  - حماية ضد هجمات القنوات الجانبية.
-- **أداء عالي**:
-  - زمن تشفير أقل من 0.3ms لكل 1MB.
-  - استهلاك ذاكرة لا يتجاوز 10MB.
+## Performance Metrics & Use Cases
 
-- **حالات استخدام مبتكرة**:
-  - حماية أنظمة SCADA الصناعية.
-  - تشفير قواعد البيانات الحساسة.
-  - منع استغلال الثغرات الصفرية.
+* **High-Velocity Execution:** Encryption latency maintained under 0.3ms per 1MB.
+* **Minimal Resource Footprint:** Memory overhead optimized to remain below 10MB.
+* **Critical Infrastructure:** Ideal for securing SCADA systems, sensitive SQL databases, and preventing Zero-Day exploit execution.
 
 ---
 
-### **مثال على استخدام عسكري**  
-- **تشغيل على خادم عسكري**:
-  ```bash
-  sudo LD_PRELOAD=./CyberShield.so /usr/bin/mission-control
-  ```
+## License & Attribution
 
-- **مراقبة الأحداث**:
-  ```bash
-  sudo cybermonitor --service CyberShield
-  ```
+Distributed under the **MIT License**.
 
-- **تشفير الاتصالات**:
-  ```bash
-  echo "Launch codes: ********" | ./CyberShield --encrypt-stream
-  ```
+**Lead Developer:** Ali Firas - thesmartshadow
+**Organization:** Phantom Force Team
 
----
-
-### **الترخيص** 📜  
-- **MIT License**  
-- طور بواسطة **Phanto Force Team**
