@@ -31,7 +31,7 @@ Ensure the following dependencies are installed on a POSIX-compliant system:
     ```
 2.  **Toolchain & Libraries:**
     ```bash
-    sudo apt install -y g++-12 libsodium-dev libssl-dev git
+    sudo apt install -y g++ libsodium-dev libssl-dev git
     ```
 
 ---
@@ -54,6 +54,15 @@ make build
 
 ```
 
+Override the compiler when needed:
+
+```bash
+make CXX=g++
+make CXX=clang++
+
+```
+
+
 Additional Makefile targets:
 
 ```bash
@@ -66,6 +75,7 @@ make clean
 Manual compilation for shared objects and binary:
 
 ```bash
+CXX=g++
 CXX=g++-12
 $CXX -std=c++20 -fPIC -shared -o CyberShield.so cyber_shield.cpp -ldl -lsodium
 $CXX -std=c++20 -o CyberShield cyber_shield.cpp -lsodium -ldl
