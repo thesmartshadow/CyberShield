@@ -84,6 +84,18 @@ $CXX -std=c++20 -o CyberShield cyber_shield.cpp -lsodium -ldl
 
 ---
 
+## Security Notes / File Format
+
+* Output files (`*.enc`) are written with permissions `0600`.
+* Encrypted output format is:
+  * 4-byte magic: `CSH1`
+  * 1-byte version: `0x01`
+  * 1-byte nonce length
+  * nonce bytes
+  * ciphertext bytes (ChaCha20-Poly1305)
+
+---
+
 ## Operational Implementation
 
 ### System Sentinel Mode
@@ -105,6 +117,13 @@ Encrypt sensitive assets with the localized binary:
 ```
 
 *Output: `passwd.enc*`
+
+Run an internal self-test (temp file encrypt + size check):
+
+```bash
+./CyberShield --self-test
+
+```
 
 ### Integrity Testing
 

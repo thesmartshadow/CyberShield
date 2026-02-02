@@ -6,6 +6,8 @@ on:
 
 jobs:
   build:
+    runs-on: ubuntu-22.04
+
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -13,18 +15,39 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y g++ make libsodium-dev libssl-dev
+          set -euxo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y build-essential make pkg-config libsodium-dev libssl-dev
+
+      - name: Toolchain info
+        run: |
+          set -euxo pipefail
+          g++ --version
+          make --version
+          pkg-config --modversion libsodium
 
       - name: Build (sanity)
-        run: make sanity
+        run: |
+          set -euxo pipefail
+          make sanity
 
       - name: Build
-        run: make build
+        run: |
+          set -euxo pipefail
+          make build
+
+      - name: Self-test
+        run: |
+          set -euxo pipefail
+          chmod +x ./CyberShield || true
+          ./CyberShield --self-test
 
       - name: Smoke test
         run: |
+          set -euxo pipefail
+          chmod +x ./CyberShield || true
           echo "hello" > sample.txt
           ./CyberShield sample.txt
           test -s sample.txt.enc
-          ls -l sample.txt sample.txt.enc
+          ls -l sample.txt.enc
+          stat -c "%a %n" sample.txt.enc
