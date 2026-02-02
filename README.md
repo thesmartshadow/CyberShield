@@ -47,18 +47,28 @@ cd CyberShield
 
 ### 2. Build Sequence
 
-For automated builds using the provided Makefile:
+For automated builds using the provided Makefile (override `CXX` if needed):
 
 ```bash
 make build
 
 ```
 
+Additional Makefile targets:
+
+```bash
+make debug
+make sanity
+make clean
+
+```
+
 Manual compilation for shared objects and binary:
 
 ```bash
-g++-12 -std=c++20 -fPIC -shared -o CyberShield.so cyber_shield.cpp -ldl -lsodium
-g++-12 -std=c++20 -o CyberShield cyber_shield.cpp -lsodium -ldl
+CXX=g++-12
+$CXX -std=c++20 -fPIC -shared -o CyberShield.so cyber_shield.cpp -ldl -lsodium
+$CXX -std=c++20 -o CyberShield cyber_shield.cpp -lsodium -ldl
 
 ```
 
@@ -113,4 +123,3 @@ Distributed under the **MIT License**.
 
 **Lead Developer:** Ali Firas - thesmartshadow
 **Organization:** Phantom Force Team
-
