@@ -163,7 +163,11 @@ namespace SystemHook {
         "/etc/sudoers",
         "/boot/"
     };
-
+/**
+     * @brief Verifies if the target path is within the restricted directories list.
+     * @param path The file path attempting to be accessed.
+     * @return true if the path is protected and access should be denied.
+     */
     bool is_protected(const char* path) {
         string target(path);
         for (const auto& p : protected_paths) {
