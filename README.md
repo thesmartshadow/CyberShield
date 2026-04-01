@@ -40,7 +40,7 @@ Ensure the following dependencies are installed on a POSIX-compliant system:
 
 ### 1. Repository Acquisition
 ```bash
-git clone [https://github.com/thesmartshadow/CyberShield.git](https://github.com/thesmartshadow/CyberShield.git)
+git clone https://github.com/thesmartshadow/CyberShield.git
 cd CyberShield
 
 ```
