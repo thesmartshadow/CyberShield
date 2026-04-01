@@ -296,7 +296,8 @@ void self_test() {
 }
 
 void file_self_check() {
-    array<char, 64> path_template = "/tmp/cybershield_selftestXXXXXX";
+    array<char, 64> path_template {};
+    std::copy_n("/tmp/cybershield_selftestXXXXXX", 32, path_template.data());
     int fd = mkstemp(path_template.data());
     if (fd == -1) {
         throw runtime_error("فشل إنشاء ملف الاختبار الذاتي");
