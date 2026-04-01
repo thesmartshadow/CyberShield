@@ -26,6 +26,9 @@
 
 using namespace std;
 
+// Global flag to prevent double ptrace() calls
+static bool g_skip_debugger_detection = false;
+
 class QuantumIdentity {
 private:
     array<unsigned char, 32> system_fingerprint;
@@ -75,6 +78,9 @@ private:
 
     bool detect_debugger() {
         #ifdef __linux__
+            if (g_skip_debugger_detection) {
+                return false;
+            }
             return (ptrace(PTRACE_TRACEME, 0, nullptr, nullptr) == -1);
         #else
             return false;
@@ -288,6 +294,8 @@ void self_test() {
             }
         #endif
         
+        // Skip debugger detection in destructor after ptrace check
+        g_skip_debugger_detection = true;
         cout << "الاختبار الذاتي ناجح ✓" << endl;
     } catch (const exception& e) {
         cerr << "خطأ في الاختبار الذاتي: " << e.what() << endl;
@@ -296,6 +304,9 @@ void self_test() {
 }
 
 void file_self_check() {
+    // Skip debugger detection after ptrace() check to prevent double calls
+    g_skip_debugger_detection = true;
+    
     array<char, 64> path_template {};
     std::copy_n("/tmp/cybershield_selftestXXXXXX", 32, path_template.data());
     int fd = mkstemp(path_template.data());
