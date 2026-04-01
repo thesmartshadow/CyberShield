@@ -1,154 +1,266 @@
 # CyberShield
-**Advanced Quantum-Resistant Encryption & System Integrity Framework**
 
-Developed by **Ali Firas - thesmartshadow** in collaboration with the **Phantom Force Team**.
+CyberShield is a C++ security project focused on file protection, runtime monitoring, and defensive process control on POSIX-compatible systems.
 
----
+It combines strong modern encryption with syscall-level interception to help protect sensitive files and reduce the risk of unauthorized access or unsafe process behavior.
 
-## Executive Summary
-
-CyberShield is a sophisticated security framework engineered to provide high-level system protection through dynamic quantum-inspired identity verification and multi-layered cryptographic protocols. By intercepting system calls and implementing memory-resident defense mechanisms, CyberShield mitigates unauthorized access and ensures data confidentiality in high-stakes environments.
-
-
-
-## Core Technical Innovations
-
-* **Dynamic Quantum Identity (DQI):** Fusion of hardware-bound telemetry (CPU ID, MAC Address) with atomic-drift timestamps for non-replicable session tokens.
-* **Ephemeral Key Volatility:** Automated self-destruction of cryptographic keys upon detection of unauthorized memory debugging or process tampering.
-* **Hybrid Encryption Architecture:** Dual-layer protection utilizing **ChaCha20-Poly1305** and **AES-256-GCM** for maximum throughput and security.
-* **Real-time Syscall Interception:** Deep-level monitoring of system calls to prevent unauthorized file system interactions.
-* **Side-Channel Mitigation:** Specialized memory hardening to defend against timing attacks and power analysis.
+Developed by **Ali Firas (thesmartshadow)** in collaboration with the **Phantom Force Team**.
 
 ---
 
-## Technical Prerequisites
+## Overview
 
-Ensure the following dependencies are installed on a POSIX-compliant system:
+CyberShield was built to explore a practical security model that combines:
 
-1.  **System Update:**
-    ```bash
-    sudo apt update
-    ```
-2.  **Toolchain & Libraries:**
-    ```bash
-    sudo apt install -y g++ libsodium-dev libssl-dev git
-    ```
+- file encryption for sensitive data
+- runtime interception for defensive monitoring
+- hardware-tied identity concepts
+- memory-focused anti-tampering ideas
+- lightweight integrity enforcement
+
+The goal of the project is not just to encrypt data, but to add an additional defensive layer around how sensitive resources are accessed and handled at runtime.
 
 ---
 
-## Deployment & Compilation
+## Features
 
-### 1. Repository Acquisition
+- **Modern file encryption**
+  - Uses authenticated encryption for protecting file contents
+
+- **Syscall-level defensive monitoring**
+  - Intercepts selected runtime behavior to restrict unsafe file access
+
+- **Dynamic identity concept**
+  - Uses host-linked attributes and timing-derived context as part of session logic
+
+- **Ephemeral key handling**
+  - Designed around short-lived cryptographic state
+
+- **Integrity-oriented execution model**
+  - Helps detect or disrupt suspicious interaction patterns during execution
+
+- **Self-test mode**
+  - Includes a built-in test path for quick validation after build
+
+---
+
+## Why CyberShield
+
+Many small security tools focus on one thing only: encryption, access control, or monitoring.
+
+CyberShield is an attempt to bring these ideas together in one project:
+
+- encrypt data at rest
+- monitor behavior at runtime
+- limit risky access patterns
+- keep the workflow simple enough to test locally
+
+This makes it useful as a research-oriented security project, a learning resource, and a base for future defensive experimentation.
+
+---
+
+## Requirements
+
+CyberShield is intended for **POSIX-compatible systems**.
+
+Install the required dependencies:
+
+```bash
+sudo apt update
+sudo apt install -y g++ libsodium-dev libssl-dev git
+````
+
+---
+
+## Getting Started
+
+Clone the repository:
+
 ```bash
 git clone https://github.com/thesmartshadow/CyberShield.git
 cd CyberShield
-
 ```
 
-### 2. Build Sequence
+---
 
-For automated builds using the provided Makefile (override `CXX` if needed):
+## Build
+
+### Using the Makefile
+
+Standard build:
 
 ```bash
 make build
-
 ```
 
-Override the compiler when needed:
+Build with a specific compiler:
 
 ```bash
 make CXX=g++
 make CXX=clang++
-
 ```
 
-
-Additional Makefile targets:
+Other useful targets:
 
 ```bash
 make debug
 make sanity
 make clean
-
 ```
 
-Manual compilation for shared objects and binary:
+### Manual build
+
+Build the shared object:
 
 ```bash
-CXX=g++
-CXX=g++-12
-$CXX -std=c++20 -fPIC -shared -o CyberShield.so cyber_shield.cpp -ldl -lsodium
-$CXX -std=c++20 -o CyberShield cyber_shield.cpp -lsodium -ldl
+g++ -std=c++20 -fPIC -shared -o CyberShield.so cyber_shield.cpp -ldl -lsodium
+```
 
+Build the standalone binary:
+
+```bash
+g++ -std=c++20 -o CyberShield cyber_shield.cpp -lsodium -ldl
 ```
 
 ---
 
-## Security Notes / File Format
+## Usage
 
-* Output files (`*.enc`) are written with permissions `0600`.
-* Encrypted output format is:
-  * 4-byte magic: `CSH1`
-  * 1-byte version: `0x01`
-  * 1-byte nonce length
-  * nonce bytes
-  * ciphertext bytes (ChaCha20-Poly1305)
-
----
-
-## Operational Implementation
-
-### System Sentinel Mode
-
-Inject the framework into critical processes to monitor and restrict unauthorized behavior:
-
-```bash
-sudo LD_PRELOAD=./CyberShield.so /usr/sbin/sshd
-
-```
-
-### Data Encapsulation (Encryption)
-
-Encrypt sensitive assets with the localized binary:
+### Encrypt a file
 
 ```bash
 ./CyberShield /etc/passwd
-
 ```
 
-*Output: `passwd.enc*`
+This creates an encrypted output file such as:
 
-Run an internal self-test (temp file encrypt + size check):
+```bash
+passwd.enc
+```
+
+### Run the self-test
 
 ```bash
 ./CyberShield --self-test
-
 ```
 
-### Integrity Testing
+This performs an internal validation flow to confirm that the encryption path is working as expected.
 
-Verify the access control layer by attempting to access restricted shadow files:
+### Runtime interception with `LD_PRELOAD`
+
+You can load the shared object into a target process:
+
+```bash
+sudo LD_PRELOAD=./CyberShield.so /usr/sbin/sshd
+```
+
+### Basic integrity check
+
+Try opening a restricted file through a preloaded process:
 
 ```bash
 LD_PRELOAD=./CyberShield.so nano /etc/shadow
-
 ```
 
-*Access will be programmatically denied by the interceptor.*
+If the interception logic is active, access should be denied by the defensive layer.
 
 ---
 
-## Performance Metrics & Use Cases
+## Encrypted File Format
 
-* **High-Velocity Execution:** Encryption latency maintained under 0.3ms per 1MB.
-* **Minimal Resource Footprint:** Memory overhead optimized to remain below 10MB.
-* **Critical Infrastructure:** Ideal for securing SCADA systems, sensitive SQL databases, and preventing Zero-Day exploit execution.
+CyberShield writes encrypted output files using the `.enc` extension.
+
+Current format:
+
+* 4-byte magic: `CSH1`
+* 1-byte version: `0x01`
+* 1-byte nonce length
+* nonce bytes
+* ciphertext bytes using **ChaCha20-Poly1305**
+
+Output file permissions are set to:
+
+```text
+0600
+```
 
 ---
 
-## License & Attribution
+## Design Notes
+
+CyberShield is built around a few core ideas:
+
+### 1. Encryption first
+
+Sensitive data should be protected with modern authenticated encryption, not plain obfuscation or reversible weak transformations.
+
+### 2. Runtime awareness
+
+Protection should not stop at file encryption. Runtime behavior matters too, especially when a process touches sensitive paths.
+
+### 3. Short-lived cryptographic state
+
+Reducing the lifetime of key material lowers exposure during inspection or tampering attempts.
+
+### 4. Defensive experimentation
+
+CyberShield is also a research-driven project. Some parts are intentionally built to explore stronger runtime security concepts and system-level hardening ideas.
+
+---
+
+## Example Workflow
+
+Build the project:
+
+```bash
+make build
+```
+
+Run the self-test:
+
+```bash
+./CyberShield --self-test
+```
+
+Encrypt a file:
+
+```bash
+./CyberShield /etc/passwd
+```
+
+Test the interception layer:
+
+```bash
+LD_PRELOAD=./CyberShield.so nano /etc/shadow
+```
+
+---
+
+## Use Cases
+
+CyberShield may be useful for:
+
+* local security research
+* defensive systems experimentation
+* file protection demonstrations
+* runtime hardening prototypes
+* educational work around encryption and process control
+
+---
+
+## Project Status
+
+CyberShield is an actively structured security project and may continue evolving as new defensive ideas, hardening strategies, and runtime protections are explored.
+
+---
+
+## License
 
 Distributed under the **MIT License**.
 
-**Lead Developer:** Ali Firas - thesmartshadow
-**Organization:** Phantom Force Team
+---
+
+## Author
+
+**Ali Firas (thesmartshadow)**
+**Phantom Force Team**
