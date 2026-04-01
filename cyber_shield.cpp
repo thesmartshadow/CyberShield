@@ -283,7 +283,7 @@ void self_test() {
         }
         
         #ifndef DEBUG_MODE
-            if (!ptrace(PTRACE_TRACEME, 0, nullptr, nullptr)) {
+            if (ptrace(PTRACE_TRACEME, 0, nullptr, nullptr) == -1) {
                 throw runtime_error("فشل الكشف عن المصحح");
             }
         #endif
