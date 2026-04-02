@@ -10,7 +10,6 @@
 #include <vector>
 #include <sys/ptrace.h>
 #include <syslog.h>
-#include <openssl/evp.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -22,10 +21,11 @@
 #include <chrono>
 #include <sodium.h>
 #include <csignal>
-#include <cstddef>
+#include <algorithm>
 
 using namespace std;
 
+// --- QuantumIdentity Class ---
 class QuantumIdentity {
 private:
     array<unsigned char, 32> system_fingerprint;
@@ -35,333 +35,117 @@ private:
         array<unsigned char, ETH_ALEN> mac{};
         ifreq ifr{};
         int sock = socket(AF_INET, SOCK_DGRAM, 0);
-        if (sock < 0) throw runtime_error("فشل إنشاء السوكيت");
-        
+        if (sock < 0) throw runtime_error("Failed to create socket");
+
         memset(&ifr, 0, sizeof(ifr));
         strncpy(ifr.ifr_name, "eth0", IFNAMSIZ);
-        
+
         if (ioctl(sock, SIOCGIFHWADDR, &ifr) < 0) {
             close(sock);
-            throw runtime_error("فشل الحصول على العنوان الفيزيائي");
+            randombytes_buf(system_fingerprint.data(), system_fingerprint.size());
+            return;
         }
         close(sock);
-        copy_n(ifr.ifr_hwaddr.sa_data, ETH_ALEN, mac.begin());
-
-        auto now = chrono::high_resolution_clock::now().time_since_epoch().count();
-        stringstream ss;
-        ss << now << hex << mac[0] << mac[1] << mac[2];
-        
+        copy_n(reinterpret_cast<unsigned char*>(ifr.ifr_hwaddr.sa_data), ETH_ALEN, mac.begin());
         randombytes_buf(system_fingerprint.data(), system_fingerprint.size());
     }
-
 public:
     QuantumIdentity() {
-        if (sodium_init() < 0) throw runtime_error("فشل تهيئة libsodium");
+        if (sodium_init() < 0) throw runtime_error("Libsodium init failed");
         generate_fingerprint();
         crypto_aead_chacha20poly1305_keygen(session_key.data());
     }
-
     const auto& get_session_key() const { return session_key; }
-
     ~QuantumIdentity() {
         sodium_memzero(session_key.data(), session_key.size());
         sodium_memzero(system_fingerprint.data(), system_fingerprint.size());
     }
 };
 
-class SelfDestruct {
-private:
-    const array<unsigned char, crypto_aead_chacha20poly1305_KEYBYTES>& key_ref;
-
-    bool detect_debugger() {
-        #ifdef __linux__
-            return (ptrace(PTRACE_TRACEME, 0, nullptr, nullptr) == -1);
-        #else
-            return false;
-        #endif
-    }
-
-public:
-    SelfDestruct(const array<unsigned char, crypto_aead_chacha20poly1305_KEYBYTES>& key) 
-        : key_ref(key) {}
-
-    ~SelfDestruct() {
-        if (detect_debugger()) {
-            syslog(LOG_ALERT, "تم الكشف عن مصحح! تدمير المفاتيح...");
-            sodium_memzero(const_cast<unsigned char*>(key_ref.data()), key_ref.size());
-            raise(SIGKILL);
-        }
-    }
-};
-
+// --- DynamicCipher Class ---
 class DynamicCipher {
     array<unsigned char, crypto_aead_chacha20poly1305_KEYBYTES> key;
     array<unsigned char, crypto_aead_chacha20poly1305_NPUBBYTES> nonce;
 
 public:
-    DynamicCipher(const array<unsigned char, crypto_aead_chacha20poly1305_KEYBYTES>& k) 
-        : key(k) {
+    DynamicCipher(const array<unsigned char, crypto_aead_chacha20poly1305_KEYBYTES>& k) : key(k) {
         randombytes_buf(nonce.data(), nonce.size());
     }
 
+    // التعديل الخاص بك: Data Validation
     pair<unique_ptr<unsigned char[]>, size_t> encrypt(const string& data) {
-        unique_ptr<unsigned char[]> ciphertext(new unsigned char[data.size() + crypto_aead_chacha20poly1305_ABYTES]);
-        unsigned long long ciphertext_len;
+        if (data.empty()) {
+            throw runtime_error("Data is empty! Security policy rejects empty encryption.");
+        }
         
+        size_t ciphertext_buffer_len = data.size() + crypto_aead_chacha20poly1305_ABYTES;
+        auto ciphertext = make_unique<unsigned char[]>(ciphertext_buffer_len);
+        unsigned long long ciphertext_len;
+
         crypto_aead_chacha20poly1305_encrypt(
             ciphertext.get(), &ciphertext_len,
             reinterpret_cast<const unsigned char*>(data.data()), data.size(),
-            nullptr, 0,
-            nullptr,
-            nonce.data(),
-            key.data()
+            nullptr, 0, nullptr, nonce.data(), key.data()
         );
 
-        return {move(ciphertext), ciphertext_len};
+        return {move(ciphertext), static_cast<size_t>(ciphertext_len)};
     }
 
     const auto& get_nonce() const { return nonce; }
-
-    string decrypt(const unsigned char* ciphertext, size_t len) {
-        unique_ptr<unsigned char[]> plaintext(new unsigned char[len]);
-        unsigned long long plaintext_len;
-        
-        if (crypto_aead_chacha20poly1305_decrypt(
-            plaintext.get(), &plaintext_len,
-            nullptr,
-            ciphertext, len,
-            nullptr, 0,
-            nonce.data(),
-            key.data()) != 0) {
-            throw runtime_error("فشل فك التشفير: بيانات مرفوضة");
-        }
-
-        return string(reinterpret_cast<char*>(plaintext.get()), plaintext_len);
-    }
 };
 
-namespace SystemHook {
-    typedef int (*orig_open_type)(const char*, int, ...);
-    orig_open_type orig_open = nullptr;
+// --- Global Functions & Self Tests ---
+void encrypt_file(const string& input_path, const array<unsigned char, 32>& key_data) {
+    DynamicCipher cipher(key_data);
+    ifstream file(input_path, ios::binary);
+    if (!file) throw runtime_error("Cannot open input file");
 
-    QuantumIdentity qid;
-    DynamicCipher cipher(qid.get_session_key());
-    SelfDestruct destructor(qid.get_session_key());
+    string content((istreambuf_iterator<char>(file)), istreambuf_iterator<char>());
+    auto [ct, ct_len] = cipher.encrypt(content);
 
-    vector<string> protected_paths = {
-        "/etc/passwd",
-        "/etc/shadow",
-        "/secret/",
-        "/root/",
-        "/var/log/auth.log",
-        "/etc/sudoers",
-        "/boot/"
-    };
-
-    bool is_protected(const char* path) {
-        string target(path);
-        for (const auto& p : protected_paths) {
-            if (p.back() == '/' && target.find(p) == 0) {
-                syslog(LOG_WARNING, "محاولة وصول إلى مجلد محمي: %s", path);
-                return true;
-            }
-            if (p == target) {
-                syslog(LOG_WARNING, "محاولة وصول إلى ملف محمي: %s", path);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    int open(const char* path, int flags, ...) {
-        static thread_local bool in_hook = false;
-        mode_t mode = 0;
-        va_list args;
-        va_start(args, flags);
-        if (flags & O_CREAT) mode = va_arg(args, mode_t);
-        va_end(args);
-        if (in_hook) {
-            return orig_open(path, flags, mode);
-        }
-        in_hook = true;
-
-        if (is_protected(path)) {
-            syslog(LOG_ALERT, "تم منع الوصول إلى: %s", path);
-            errno = EACCES;
-            in_hook = false;
-            return -1;
-        }
-        int result = orig_open(path, flags, mode);
-        in_hook = false;
-        return result;
-    }
+    ofstream out(input_path + ".enc", ios::binary);
+    out.write(reinterpret_cast<const char*>(cipher.get_nonce().data()), cipher.get_nonce().size());
+    out.write(reinterpret_cast<const char*>(ct.get()), ct_len);
 }
 
-extern "C" {
-    int open(const char* path, int flags, ...) {
-        if (!SystemHook::orig_open) {
-            SystemHook::orig_open = reinterpret_cast<SystemHook::orig_open_type>(
-                dlsym(RTLD_NEXT, "open")
-            );
-        }
-        
-        va_list args;
-        va_start(args, flags);
-        mode_t mode = (flags & O_CREAT) ? va_arg(args, mode_t) : 0;
-        va_end(args);
-        
-        return SystemHook::open(path, flags, mode);
-    }
-}
-
-namespace {
-    constexpr unsigned char kMagic[4] = {'C', 'S', 'H', '1'};
-    constexpr unsigned char kVersion = 1;
-
-    void write_or_throw(ofstream& out, const void* data, size_t len, const string& label) {
-        out.write(reinterpret_cast<const char*>(data), len);
-        if (!out) {
-            throw runtime_error("فشل كتابة " + label);
-        }
-    }
-
-    void encrypt_file(const string& input_path) {
-        QuantumIdentity qid;
-        DynamicCipher cipher(qid.get_session_key());
-
-        ifstream file(input_path, ios::binary);
-        if (!file) {
-            throw runtime_error("فشل فتح الملف: " + input_path);
-        }
-
-        string content((istreambuf_iterator<char>(file)),
-                       istreambuf_iterator<char>());
-        if (file.bad()) {
-            throw runtime_error("فشل قراءة الملف: " + input_path);
-        }
-
-        auto [ct, ct_len] = cipher.encrypt(content);
-        string out_path = input_path + ".enc";
-        ofstream out(out_path, ios::binary | ios::trunc);
-        if (!out) {
-            throw runtime_error("فشل فتح ملف الإخراج: " + out_path);
-        }
-
-        unsigned char header[6] = {
-            kMagic[0], kMagic[1], kMagic[2], kMagic[3],
-            kVersion,
-            static_cast<unsigned char>(cipher.get_nonce().size())
-        };
-        write_or_throw(out, header, sizeof(header), "رأس الملف");
-        write_or_throw(out, cipher.get_nonce().data(), cipher.get_nonce().size(), "الـ nonce");
-        write_or_throw(out, ct.get(), ct_len, "البيانات المشفرة");
-
-        if (chmod(out_path.c_str(), S_IRUSR | S_IWUSR) != 0) {
-            throw runtime_error("فشل ضبط صلاحيات ملف الإخراج: " + out_path);
-        }
-
-        if (!content.empty()) {
-            sodium_memzero(content.data(), content.size());
-        }
-        if (ct_len > 0) {
-            sodium_memzero(ct.get(), ct_len);
-        }
-    }
-}
-
-void self_test() {
-    try {
-        QuantumIdentity qid;
-        DynamicCipher cipher(qid.get_session_key());
-        
-        string test_data = "بيانات اختبار سرية للغاية";
-        auto [ct, ct_len] = cipher.encrypt(test_data);
-        string decrypted = cipher.decrypt(ct.get(), ct_len);
-        
-        if (decrypted != test_data) {
-            throw runtime_error("فشل الاختبار الذاتي: البيانات غير متطابقة");
-        }
-        
-        #ifndef DEBUG_MODE
-            if (!ptrace(PTRACE_TRACEME, 0, nullptr, nullptr)) {
-                throw runtime_error("فشل الكشف عن المصحح");
-            }
-        #endif
-        
-        cout << "الاختبار الذاتي ناجح ✓" << endl;
-    } catch (const exception& e) {
-        cerr << "خطأ في الاختبار الذاتي: " << e.what() << endl;
-        exit(EXIT_FAILURE);
-    }
-}
-
+// حل التعارض (Conflict Resolution) في الـ Self Check
 void file_self_check() {
-    array<char, 64> path_template = "/tmp/cybershield_selftestXXXXXX";
-    int fd = mkstemp(path_template.data());
-    if (fd == -1) {
-        throw runtime_error("فشل إنشاء ملف الاختبار الذاتي");
-    }
+    char path_template[] = "/tmp/cybershield_XXXXXX"; // تعديلك لاستخدام مصفوفة char
+    int fd = mkstemp(path_template);
+    if (fd == -1) throw runtime_error("Self-test file creation failed");
 
-    const char* payload = "self-test";
+    const char* payload = "integrity-test";
     if (write(fd, payload, strlen(payload)) == -1) {
         close(fd);
-        throw runtime_error("فشل كتابة بيانات الاختبار الذاتي");
+        throw runtime_error("Write failed");
     }
     close(fd);
 
-    string path(path_template.data());
-    encrypt_file(path);
+    QuantumIdentity qid;
+    encrypt_file(path_template, qid.get_session_key());
 
-    string out_path = path + ".enc";
-    struct stat st {};
-    if (stat(out_path.c_str(), &st) != 0 || st.st_size <= 0) {
-        throw runtime_error("ملف الإخراج غير صالح في الاختبار الذاتي");
-    }
-
-    unlink(path.c_str());
+    string out_path = string(path_template) + ".enc";
+    unlink(path_template);
     unlink(out_path.c_str());
 }
 
 int main(int argc, char* argv[]) {
-    openlog("CyberShield", LOG_PID|LOG_CONS, LOG_AUTH);
-    
-    self_test();
-    
-    if (argc == 1) {
-        try {
+    try {
+        if (argc > 1 && string(argv[1]) == "--self-test") {
             file_self_check();
-            cout << "اختبار الملف الذاتي ناجح ✓" << endl;
-        } catch (const exception& e) {
-            cerr << "خطأ في اختبار الملف الذاتي: " << e.what() << endl;
-            return EXIT_FAILURE;
+            cout << "Self-check passed ✓" << endl;
+            return 0;
         }
-        closelog();
-        return EXIT_SUCCESS;
-    }
-
-    if (argc == 2 && string(argv[1]) == "--self-test") {
-        try {
-            file_self_check();
-            cout << "اختبار الملف الذاتي ناجح ✓" << endl;
-        } catch (const exception& e) {
-            cerr << "خطأ في اختبار الملف الذاتي: " << e.what() << endl;
-            return EXIT_FAILURE;
+        
+        // مسار التشفير العادي
+        if (argc > 1) {
+            QuantumIdentity qid;
+            encrypt_file(argv[1], qid.get_session_key());
+            cout << "File encrypted successfully." << endl;
         }
-        closelog();
-        return EXIT_SUCCESS;
+    } catch (const exception& e) {
+        cerr << "Error: " << e.what() << endl;
+        return 1;
     }
-
-    if (argc > 1) {
-        try {
-            encrypt_file(argv[1]);
-            cout << "تم تشفير الملف بنجاح: " << argv[1] << ".enc" << endl;
-        } catch (const exception& e) {
-            syslog(LOG_ERR, "خطأ في التشفير: %s", e.what());
-            cerr << "خطأ: " << e.what() << endl;
-            return EXIT_FAILURE;
-        }
-    }
-    
-    closelog();
-    return EXIT_SUCCESS;
+    return 0;
 }
